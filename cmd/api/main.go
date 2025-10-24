@@ -2,20 +2,25 @@ package main
 
 import (
 	"log"
+	"time"
 
 	transport "github.com/Gab-Mello/service-finder/internal/http"
+	"github.com/Gab-Mello/service-finder/internal/posting"
 	"github.com/Gab-Mello/service-finder/internal/user"
 )
 
 func main() {
-	repo := user.NewRepository()
-	svc := user.NewService(repo, nil, nil, nil)
+	addr := ":8080"
+
+	userRepo := user.NewRepository()
+	userSvc := user.NewService(userRepo, nil, time.Now, nil)
+
+	postRepo := posting.NewRepository()
+	postSvc := posting.NewService(postRepo, time.Now, nil)
 
 	mux := transport.NewServer()
-	transport.RegisterAll(mux, svc)
+	transport.RegisterAll(mux, userSvc, postSvc)
 
-	log.Printf("listening on %s", ":8080")
-	if err := transport.Listen(":8080", mux); err != nil {
-		log.Fatal(err)
-	}
+	log.Printf("listening on %s", addr)
+	log.Fatal(transport.Listen(addr, mux))
 }
