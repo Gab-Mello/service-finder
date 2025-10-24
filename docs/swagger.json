@@ -1,0 +1,159 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Plataforma de prestação e busca de serviços.",
+        "title": "Service Finder API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/api/v1",
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Login",
+                "responses": {}
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Logout",
+                "responses": {}
+            }
+        },
+        "/me": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Obter dados do usuário logado",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do usuário",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/postings": {
+            "get": {
+                "tags": [
+                    "postings"
+                ],
+                "summary": "Listar anúncios públicos",
+                "responses": {}
+            },
+            "post": {
+                "tags": [
+                    "postings"
+                ],
+                "summary": "Criar anúncio (posting)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do prestador",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/postings/mine": {
+            "get": {
+                "tags": [
+                    "postings"
+                ],
+                "summary": "Listar meus anúncios",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do prestador",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/postings/{id}": {
+            "get": {
+                "tags": [
+                    "postings"
+                ],
+                "summary": "Detalhar anúncio público",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Posting ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "patch": {
+                "tags": [
+                    "postings"
+                ],
+                "summary": "Atualizar anúncio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do prestador",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Posting ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/providers/profile": {
+            "patch": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Atualizar perfil do prestador",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do prestador",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/users": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Cadastrar usuário",
+                "responses": {}
+            }
+        }
+    }
+}

@@ -12,6 +12,11 @@ type Handler struct{ svc *domain.Service }
 
 func NewHandler(s *domain.Service) *Handler { return &Handler{svc: s} }
 
+// Create
+// @Summary  Criar anúncio (posting)
+// @Tags     postings
+// @Param    userId  query  string  true  "ID do prestador"
+// @Router   /postings [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if pid == "" {
@@ -33,6 +38,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, p)
 }
 
+// Update
+// @Summary  Atualizar anúncio
+// @Tags     postings
+// @Param    userId  query  string  true  "ID do prestador"
+// @Param    id      path   string  true  "Posting ID"
+// @Router   /postings/{id} [patch]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if pid == "" {
@@ -55,6 +66,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, p)
 }
 
+// Archive
+// @Summary  Arquivar anúncio
+// @Tags     postings
+// @Param    userId  query  string  true  "ID do prestador"
+// @Param    id      path   string  true  "Posting ID"
+// @Router   /postings/{id}/archive [post]
+
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if pid == "" {
@@ -71,6 +89,11 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 
+// ListMine
+// @Summary  Listar meus anúncios
+// @Tags     postings
+// @Param    userId  query  string  true  "ID do prestador"
+// @Router   /postings/mine [get]
 func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
 	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if pid == "" {
@@ -81,6 +104,11 @@ func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, list)
 }
 
+// GetPublic
+// @Summary  Detalhar anúncio público
+// @Tags     postings
+// @Param    id  path  string  true  "Posting ID"
+// @Router   /postings/{id} [get]
 func (h *Handler) GetPublic(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
 	p, err := h.svc.GetPublic(id)
@@ -91,6 +119,10 @@ func (h *Handler) GetPublic(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, p)
 }
 
+// ListPublic
+// @Summary  Listar anúncios públicos
+// @Tags     postings
+// @Router   /postings [get]
 func (h *Handler) ListPublic(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.ListPublic()
 	writeJSON(w, 200, list)

@@ -12,6 +12,10 @@ type Handler struct{ svc *domain.Service }
 
 func NewHandler(svc *domain.Service) *Handler { return &Handler{svc: svc} }
 
+// Register
+// @Summary  Cadastrar usuário
+// @Tags     users
+// @Router   /users [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -26,6 +30,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, map[string]any{"id": u.ID, "name": u.Name, "email": u.Email, "role": u.Role})
 }
 
+// Login
+// @Summary  Login
+// @Tags     users
+// @Router   /login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -41,10 +49,19 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"status": "ok", "userId": u.ID})
 }
 
+// Logout
+// @Summary  Logout
+// @Tags     users
+// @Router   /logout [post]
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"status": "ok"}) // noop por enquanto
 }
 
+// Me
+// @Summary  Obter dados do usuário logado
+// @Tags     users
+// @Param    userId  query  string  true  "ID do usuário"
+// @Router   /me [get]
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if id == "" {
@@ -63,6 +80,11 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, resp)
 }
 
+// UpdateProviderProfile
+// @Summary  Atualizar perfil do prestador
+// @Tags     users
+// @Param    userId  query  string  true  "ID do prestador"
+// @Router   /providers/profile [patch]
 func (h *Handler) UpdateProviderProfile(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if id == "" {

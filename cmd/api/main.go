@@ -1,3 +1,9 @@
+// Package main Service Finder API.
+//
+// @title       Service Finder API
+// @version     1.0
+// @description Plataforma de prestação e busca de serviços.
+// @BasePath    /api/v1
 package main
 
 import (
@@ -7,6 +13,8 @@ import (
 	transport "github.com/Gab-Mello/service-finder/internal/http"
 	"github.com/Gab-Mello/service-finder/internal/posting"
 	"github.com/Gab-Mello/service-finder/internal/user"
+
+	_ "github.com/Gab-Mello/service-finder/docs"
 )
 
 func main() {

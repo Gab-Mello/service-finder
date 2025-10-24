@@ -1,0 +1,107 @@
+basePath: /api/v1
+info:
+  contact: {}
+  description: Plataforma de prestação e busca de serviços.
+  title: Service Finder API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      responses: {}
+      summary: Login
+      tags:
+      - users
+  /logout:
+    post:
+      responses: {}
+      summary: Logout
+      tags:
+      - users
+  /me:
+    get:
+      parameters:
+      - description: ID do usuário
+        in: query
+        name: userId
+        required: true
+        type: string
+      responses: {}
+      summary: Obter dados do usuário logado
+      tags:
+      - users
+  /postings:
+    get:
+      responses: {}
+      summary: Listar anúncios públicos
+      tags:
+      - postings
+    post:
+      parameters:
+      - description: ID do prestador
+        in: query
+        name: userId
+        required: true
+        type: string
+      responses: {}
+      summary: Criar anúncio (posting)
+      tags:
+      - postings
+  /postings/{id}:
+    get:
+      parameters:
+      - description: Posting ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      summary: Detalhar anúncio público
+      tags:
+      - postings
+    patch:
+      parameters:
+      - description: ID do prestador
+        in: query
+        name: userId
+        required: true
+        type: string
+      - description: Posting ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      summary: Atualizar anúncio
+      tags:
+      - postings
+  /postings/mine:
+    get:
+      parameters:
+      - description: ID do prestador
+        in: query
+        name: userId
+        required: true
+        type: string
+      responses: {}
+      summary: Listar meus anúncios
+      tags:
+      - postings
+  /providers/profile:
+    patch:
+      parameters:
+      - description: ID do prestador
+        in: query
+        name: userId
+        required: true
+        type: string
+      responses: {}
+      summary: Atualizar perfil do prestador
+      tags:
+      - users
+  /users:
+    post:
+      responses: {}
+      summary: Cadastrar usuário
+      tags:
+      - users
+swagger: "2.0"
