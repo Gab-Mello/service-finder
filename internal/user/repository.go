@@ -1,7 +1,5 @@
 package user
 
-import "sync"
-
 type Repository interface {
 	Create(u *User) error
 	ByEmail(email string) (*User, error)
@@ -10,53 +8,47 @@ type Repository interface {
 }
 
 type memoryRepo struct {
-	mu   sync.RWMutex
-	byID map[string]*User
-	byEM map[string]string
+	byID map[string]User
 }
 
 func NewRepository() Repository {
-	return &memoryRepo{byID: map[string]*User{}, byEM: map[string]string{}}
+	return &memoryRepo{byID: make(map[string]User)}
 }
 
 func (r *memoryRepo) Create(u *User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.byEM[u.Email]; ok {
-		return ErrEmailTaken
+	// e-mail único: varre o map (O(n))
+	for _, it := range r.byID {
+		if it.Email == u.Email {
+			return ErrEmailTaken
+		}
 	}
-	c := *u
-	r.byID[u.ID] = &c
-	r.byEM[u.Email] = u.ID
+	r.byID[u.ID] = *u
 	return nil
 }
+
 func (r *memoryRepo) ByEmail(email string) (*User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	id, ok := r.byEM[email]
-	if !ok {
-		return nil, ErrNotFound
+	for _, it := range r.byID {
+		if it.Email == email {
+			uu := it
+			return &uu, nil
+		}
 	}
-	c := *r.byID[id]
-	return &c, nil
+	return nil, ErrNotFound
 }
+
 func (r *memoryRepo) ByID(id string) (*User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	u, ok := r.byID[id]
+	it, ok := r.byID[id]
 	if !ok {
 		return nil, ErrNotFound
 	}
-	c := *u
-	return &c, nil
+	uu := it
+	return &uu, nil
 }
+
 func (r *memoryRepo) Update(u *User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if _, ok := r.byID[u.ID]; !ok {
 		return ErrNotFound
 	}
-	c := *u
-	r.byID[u.ID] = &c
+	r.byID[u.ID] = *u
 	return nil
 }

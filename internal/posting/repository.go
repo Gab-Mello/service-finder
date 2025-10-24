@@ -1,7 +1,5 @@
 package posting
 
-import "sync"
-
 type Repository interface {
 	Create(*Posting) error
 	Update(*Posting) error
@@ -11,63 +9,50 @@ type Repository interface {
 }
 
 type memoryRepo struct {
-	mu   sync.RWMutex
-	byID map[string]*Posting
+	byID map[string]Posting
 }
 
 func NewRepository() Repository {
-	return &memoryRepo{byID: map[string]*Posting{}}
+	return &memoryRepo{byID: make(map[string]Posting)}
 }
 
 func (r *memoryRepo) Create(p *Posting) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	cp := *p
-	r.byID[p.ID] = &cp
+	r.byID[p.ID] = *p
 	return nil
 }
 
 func (r *memoryRepo) Update(p *Posting) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if _, ok := r.byID[p.ID]; !ok {
 		return ErrNotFound
 	}
-	cp := *p
-	r.byID[p.ID] = &cp
+	r.byID[p.ID] = *p
 	return nil
 }
 
 func (r *memoryRepo) ByID(id string) (*Posting, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	p, ok := r.byID[id]
+	it, ok := r.byID[id]
 	if !ok {
 		return nil, ErrNotFound
 	}
-	cp := *p
+	cp := it
 	return &cp, nil
 }
 
 func (r *memoryRepo) ListByProvider(pid string) ([]Posting, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	out := []Posting{}
-	for _, p := range r.byID {
-		if p.ProviderID == pid {
-			out = append(out, *p)
+	out := make([]Posting, 0)
+	for _, it := range r.byID {
+		if it.ProviderID == pid {
+			out = append(out, it)
 		}
 	}
 	return out, nil
 }
 
 func (r *memoryRepo) ListPublic() ([]Posting, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	out := []Posting{}
-	for _, p := range r.byID {
-		if !p.Archived {
-			out = append(out, *p)
+	out := make([]Posting, 0)
+	for _, it := range r.byID {
+		if !it.Archived {
+			out = append(out, it)
 		}
 	}
 	return out, nil
