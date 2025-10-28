@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Gab-Mello/service-finder/internal/ports"
 	"github.com/google/uuid"
 )
 
@@ -110,8 +109,6 @@ func (s *Service) UpdateProviderProfile(userID string, p ProviderProfile) (*User
 	}
 	return u, nil
 }
-
-var _ ports.ProviderDirectory = (*Service)(nil)
 
 func (s *Service) GetNameByID(id string) (string, error) {
 	u, err := s.repo.ByID(id)
