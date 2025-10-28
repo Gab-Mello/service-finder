@@ -2,11 +2,14 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrValidation = errors.New("validation error")
 
 type PasswordHasher interface {
 	Hash(plain string) (string, error)
@@ -39,16 +42,16 @@ func (s *Service) Register(name, email, password, role string) (*User, error) {
 	role = strings.ToLower(strings.TrimSpace(role))
 
 	if name == "" {
-		return nil, errors.New("name is required")
+		return nil, fmt.Errorf("%w: name is required", ErrValidation)
 	}
 	if !strings.Contains(email, "@") {
-		return nil, errors.New("invalid email")
+		return nil, fmt.Errorf("%w: invalid email", ErrValidation)
 	}
 	if len(password) < 8 {
-		return nil, errors.New("password must be at least 8 characters")
+		return nil, fmt.Errorf("%w: password must be at least 8 characters", ErrValidation)
 	}
 	if role != string(RoleProvider) && role != string(RoleCustomer) {
-		return nil, errors.New("role must be 'provider' or 'customer'")
+		return nil, fmt.Errorf("%w: role must be 'provider' or 'customer", ErrValidation)
 	}
 
 	if _, err := s.repo.ByEmail(email); err == nil {

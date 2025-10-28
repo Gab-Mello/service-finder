@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	middleware "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
 	domain "github.com/Gab-Mello/service-finder/internal/posting"
 )
 
@@ -18,12 +19,11 @@ func NewHandler(s *domain.Service) *Handler { return &Handler{svc: s} }
 // @Param    userId  query  string  true  "ID do prestador"
 // @Router   /postings [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
-	if pid == "" {
-		writeErr(w, 400, "missing query parameter: userId")
+	pid, ok := middleware.UserIDFromContext(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-
 	var req CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, "invalid json")

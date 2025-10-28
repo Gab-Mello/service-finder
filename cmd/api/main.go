@@ -10,6 +10,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Gab-Mello/service-finder/internal/auth"
 	transport "github.com/Gab-Mello/service-finder/internal/http"
 	"github.com/Gab-Mello/service-finder/internal/posting"
 	"github.com/Gab-Mello/service-finder/internal/user"
@@ -20,6 +21,8 @@ import (
 func main() {
 	addr := ":8080"
 
+	sessions := auth.NewSessionManager(5 * time.Minute)
+
 	userRepo := user.NewRepository()
 	userSvc := user.NewService(userRepo, nil, time.Now, nil)
 
@@ -27,7 +30,7 @@ func main() {
 	postSvc := posting.NewService(postRepo, time.Now, nil)
 
 	mux := transport.NewServer()
-	transport.RegisterAll(mux, userSvc, postSvc)
+	transport.RegisterAll(mux, sessions, userSvc, postSvc)
 
 	log.Printf("listening on %s", addr)
 	log.Fatal(transport.Listen(addr, mux))
