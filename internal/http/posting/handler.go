@@ -45,19 +45,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 // @Param    id      path   string  true  "Posting ID"
 // @Router   /postings/{id} [patch]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
-	if pid == "" {
-		writeErr(w, 400, "missing query parameter: userId")
+	pid, ok := middleware.UserIDFromContext(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
 
+	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
 	var patch map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeErr(w, 400, "invalid json")
 		return
 	}
-
 	p, err := h.svc.Update(pid, id, patch)
 	if err != nil {
 		writeErr(w, statusFor(err), err.Error())
@@ -74,9 +73,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 // @Router   /postings/{id}/archive [post]
 
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
-	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
-	if pid == "" {
-		writeErr(w, 400, "missing query parameter: userId")
+	pid, ok := middleware.UserIDFromContext(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
@@ -95,9 +94,9 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 // @Param    userId  query  string  true  "ID do prestador"
 // @Router   /postings/mine [get]
 func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
-	pid := strings.TrimSpace(r.URL.Query().Get("userId"))
-	if pid == "" {
-		writeErr(w, 400, "missing query parameter: userId")
+	pid, ok := middleware.UserIDFromContext(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	list, _ := h.svc.ListMine(pid)
