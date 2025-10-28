@@ -53,7 +53,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
-	// cria sessão e seta cookie
+
 	sid := h.sessions.New(u.ID)
 	h.sessions.SetCookie(w, sid)
 

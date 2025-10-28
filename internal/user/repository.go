@@ -16,7 +16,6 @@ func NewRepository() Repository {
 }
 
 func (r *memoryRepo) Create(u *User) error {
-	// e-mail único: varre o map (O(n))
 	for _, it := range r.byID {
 		if it.Email == u.Email {
 			return ErrEmailTaken
