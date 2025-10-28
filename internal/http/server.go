@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/Gab-Mello/service-finder/internal/http/middleware"
 )
 
 func NewServer() *http.ServeMux {
@@ -13,7 +15,7 @@ func NewServer() *http.ServeMux {
 func Listen(addr string, handler *http.ServeMux) error {
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           withLogging(handler),
+		Handler:           middleware.PermissiveCORSWithoutCreds(withLogging(handler)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return srv.ListenAndServe()
