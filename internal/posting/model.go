@@ -3,17 +3,18 @@ package posting
 import "time"
 
 type Posting struct {
-	ID          string
-	ProviderID  string
-	Title       string
-	Description string
-	Price       int64
-	Category    string
-	City        string
-	District    string
-	Archived    bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           string
+	ProviderID   string
+	ProviderName string
+	Title        string
+	Description  string
+	Price        int64
+	Category     string
+	City         string
+	District     string
+	Archived     bool
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 var (

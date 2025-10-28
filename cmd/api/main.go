@@ -27,7 +27,7 @@ func main() {
 	userSvc := user.NewService(userRepo, nil, time.Now, nil)
 
 	postRepo := posting.NewRepository()
-	postSvc := posting.NewService(postRepo, time.Now, nil)
+	postSvc := posting.NewService(postRepo, userSvc, time.Now, nil)
 
 	mux := transport.NewServer()
 	transport.RegisterAll(mux, sessions, userSvc, postSvc)

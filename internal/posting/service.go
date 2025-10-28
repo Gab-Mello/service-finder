@@ -5,23 +5,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Gab-Mello/service-finder/internal/ports"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo  Repository
-	now   func() time.Time
-	idgen func() string
+	repo      Repository
+	providers ports.ProviderDirectory
+	now       func() time.Time
+	idgen     func() string
 }
 
-func NewService(r Repository, now func() time.Time, idgen func() string) *Service {
+func NewService(r Repository, providers ports.ProviderDirectory, now func() time.Time, idgen func() string) *Service {
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	if idgen == nil {
 		idgen = func() string { return uuid.NewString() }
 	}
-	return &Service{repo: r, now: now, idgen: idgen}
+	return &Service{repo: r, providers: providers, now: now, idgen: idgen}
 }
 
 func (s *Service) Create(providerID, title, desc string, price int64, category, city, district string) (*Posting, error) {
@@ -29,8 +31,14 @@ func (s *Service) Create(providerID, title, desc string, price int64, category, 
 		strings.TrimSpace(category) == "" || strings.TrimSpace(city) == "" || strings.TrimSpace(district) == "" {
 		return nil, ErrInvalidFields
 	}
+
+	providerName, err := s.providers.GetNameByID(providerID)
+	if err != nil {
+		return nil, ErrInvalidFields
+	}
+
 	p := &Posting{
-		ID: s.idgen(), ProviderID: providerID,
+		ID: s.idgen(), ProviderID: providerID, ProviderName: providerName,
 		Title: strings.TrimSpace(title), Description: strings.TrimSpace(desc),
 		Price: price, Category: strings.TrimSpace(category),
 		City: strings.TrimSpace(city), District: strings.TrimSpace(district),
