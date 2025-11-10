@@ -11,7 +11,7 @@ import (
 func Register(mux *http.ServeMux, h *Handler, sessions *auth.SessionManager) {
 	const api = "/api/v1"
 
-	mux.HandleFunc("GET "+api+"/postings", h.ListPublic)
+	mux.HandleFunc("GET "+api+"/postings", h.Search)
 	mux.HandleFunc("GET "+api+"/postings/", h.GetPublic)
 
 	mux.HandleFunc("POST "+api+"/postings", middleware.WithAuth(sessions, h.Create))

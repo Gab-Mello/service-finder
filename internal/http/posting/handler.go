@@ -3,9 +3,10 @@ package posting
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
-	middleware "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
+	authmw "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
 	domain "github.com/Gab-Mello/service-finder/internal/posting"
 )
 
@@ -16,10 +17,9 @@ func NewHandler(s *domain.Service) *Handler { return &Handler{svc: s} }
 // Create
 // @Summary  Criar anúncio (posting)
 // @Tags     postings
-// @Param    userId  query  string  true  "ID do prestador"
 // @Router   /postings [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	pid, ok := middleware.UserIDFromContext(r)
+	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -41,11 +41,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 // Update
 // @Summary  Atualizar anúncio
 // @Tags     postings
-// @Param    userId  query  string  true  "ID do prestador"
 // @Param    id      path   string  true  "Posting ID"
 // @Router   /postings/{id} [patch]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	pid, ok := middleware.UserIDFromContext(r)
+	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -68,12 +67,10 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 // Archive
 // @Summary  Arquivar anúncio
 // @Tags     postings
-// @Param    userId  query  string  true  "ID do prestador"
 // @Param    id      path   string  true  "Posting ID"
 // @Router   /postings/{id}/archive [post]
-
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
-	pid, ok := middleware.UserIDFromContext(r)
+	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -91,10 +88,9 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 // ListMine
 // @Summary  Listar meus anúncios
 // @Tags     postings
-// @Param    userId  query  string  true  "ID do prestador"
 // @Router   /postings/mine [get]
 func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
-	pid, ok := middleware.UserIDFromContext(r)
+	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -118,14 +114,46 @@ func (h *Handler) GetPublic(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, p)
 }
 
-// ListPublic
-// @Summary  Listar anúncios públicos
+// Search
+// @Summary  Buscar/Listar anúncios com filtros
 // @Tags     postings
 // @Router   /postings [get]
-func (h *Handler) ListPublic(w http.ResponseWriter, r *http.Request) {
-	list, _ := h.svc.ListPublic()
-	writeJSON(w, 200, list)
+func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	p := domain.SearchParams{
+		Query:    q.Get("q"),
+		Category: q.Get("category"),
+		City:     q.Get("city"),
+		District: q.Get("district"),
+		Sort:     q.Get("sort"),
+		Order:    q.Get("order"),
+	}
+	if v := q.Get("price_min"); v != "" {
+		p.PriceMin = parseI64(v)
+	}
+	if v := q.Get("price_max"); v != "" {
+		p.PriceMax = parseI64(v)
+	}
+	if v := q.Get("rating_min"); v != "" {
+		p.RatingMin = parseF64(v)
+	}
+	if v := q.Get("limit"); v != "" {
+		p.Limit = parseI(v)
+	}
+	if v := q.Get("offset"); v != "" {
+		p.Offset = parseI(v)
+	}
+
+	items, next := h.svc.Search(p)
+	writeJSON(w, 200, map[string]any{
+		"items":       items,
+		"next_offset": next,
+	})
 }
+
+func parseI(s string) int       { i, _ := strconv.Atoi(s); return i }
+func parseI64(s string) int64   { i, _ := strconv.ParseInt(s, 10, 64); return i }
+func parseF64(s string) float64 { f, _ := strconv.ParseFloat(s, 64); return f }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

@@ -2,6 +2,7 @@ package posting
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -40,8 +41,9 @@ func (s *Service) Create(providerID, title, desc string, price int64, category, 
 	p := &Posting{
 		ID: s.idgen(), ProviderID: providerID, ProviderName: providerName,
 		Title: strings.TrimSpace(title), Description: strings.TrimSpace(desc),
-		Price: price, Category: strings.TrimSpace(category),
-		City: strings.TrimSpace(city), District: strings.TrimSpace(district),
+		Price:    price,
+		Category: strings.TrimSpace(category),
+		City:     strings.TrimSpace(city), District: strings.TrimSpace(district),
 		CreatedAt: s.now(), UpdatedAt: s.now(),
 	}
 	if err := s.repo.Create(p); err != nil {
@@ -116,3 +118,97 @@ func (s *Service) ListMine(providerID string) ([]Posting, error) {
 	return s.repo.ListByProvider(providerID)
 }
 func (s *Service) ListPublic() ([]Posting, error) { return s.repo.ListPublic() }
+
+type SearchParams struct {
+	Query                    string
+	Category, City, District string
+	PriceMin, PriceMax       int64
+
+	RatingMin float64
+	Sort      string
+	Order     string
+	Limit     int
+	Offset    int
+}
+
+func (s *Service) Search(p SearchParams) ([]Posting, int) {
+	all, _ := s.repo.ListPublic()
+
+	q := strings.ToLower(strings.TrimSpace(p.Query))
+	filtered := make([]Posting, 0, len(all))
+	for _, it := range all {
+		if q != "" && !strings.Contains(strings.ToLower(it.Title+" "+it.Description), q) {
+			continue
+		}
+		if p.Category != "" && !strings.EqualFold(it.Category, p.Category) {
+			continue
+		}
+		if p.City != "" && !strings.EqualFold(it.City, p.City) {
+			continue
+		}
+		if p.District != "" && !strings.EqualFold(it.District, p.District) {
+			continue
+		}
+		if p.PriceMin > 0 && it.Price < p.PriceMin {
+			continue
+		}
+		if p.PriceMax > 0 && it.Price > p.PriceMax {
+			continue
+		}
+
+		filtered = append(filtered, it)
+	}
+
+	sortKey := strings.ToLower(p.Sort)
+	order := strings.ToLower(p.Order)
+	if sortKey == "" {
+		sortKey = "relevance"
+	}
+	less := func(i, j int) bool {
+		switch sortKey {
+		case "price":
+			if order == "desc" {
+				return filtered[i].Price > filtered[j].Price
+			}
+			return filtered[i].Price < filtered[j].Price
+		case "rating":
+			fallthrough
+		default:
+			qi := 0
+			qj := 0
+			if q != "" && strings.Contains(strings.ToLower(filtered[i].Title), q) {
+				qi = 1
+			}
+			if q != "" && strings.Contains(strings.ToLower(filtered[j].Title), q) {
+				qj = 1
+			}
+			if qi != qj {
+				return qi > qj
+			}
+
+			return filtered[i].UpdatedAt.After(filtered[j].UpdatedAt)
+		}
+	}
+	sort.SliceStable(filtered, less)
+
+	limit := p.Limit
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	offset := p.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(filtered) {
+		return []Posting{}, -1
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	next := -1
+	if end < len(filtered) {
+		next = end
+	}
+	return filtered[offset:end], next
+}
