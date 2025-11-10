@@ -2,6 +2,7 @@ package posting
 
 import (
 	"errors"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -134,19 +135,46 @@ type SearchParams struct {
 func (s *Service) Search(p SearchParams) ([]Posting, int) {
 	all, _ := s.repo.ListPublic()
 
-	q := strings.ToLower(strings.TrimSpace(p.Query))
+	if u, err := url.QueryUnescape(p.Query); err == nil {
+		p.Query = u
+	}
+	if u, err := url.QueryUnescape(p.Category); err == nil {
+		p.Category = u
+	}
+	if u, err := url.QueryUnescape(p.City); err == nil {
+		p.City = u
+	}
+	if u, err := url.QueryUnescape(p.District); err == nil {
+		p.District = u
+	}
+
+	norm := func(x string) string {
+		x = strings.TrimSpace(strings.ToLower(x))
+		return strings.Join(strings.Fields(x), " ")
+	}
+
+	q := norm(p.Query)
+	wantCat := norm(p.Category)
+	wantCity := norm(p.City)
+	wantDist := norm(p.District)
+
 	filtered := make([]Posting, 0, len(all))
 	for _, it := range all {
-		if q != "" && !strings.Contains(strings.ToLower(it.Title+" "+it.Description), q) {
+		titleDesc := norm(it.Title + " " + it.Description)
+		gotCat := norm(it.Category)
+		gotCity := norm(it.City)
+		gotDist := norm(it.District)
+
+		if q != "" && !strings.Contains(titleDesc, q) {
 			continue
 		}
-		if p.Category != "" && !strings.EqualFold(it.Category, p.Category) {
+		if wantCat != "" && gotCat != wantCat {
 			continue
 		}
-		if p.City != "" && !strings.EqualFold(it.City, p.City) {
+		if wantCity != "" && gotCity != wantCity {
 			continue
 		}
-		if p.District != "" && !strings.EqualFold(it.District, p.District) {
+		if wantDist != "" && gotDist != wantDist {
 			continue
 		}
 		if p.PriceMin > 0 && it.Price < p.PriceMin {
@@ -176,10 +204,10 @@ func (s *Service) Search(p SearchParams) ([]Posting, int) {
 		default:
 			qi := 0
 			qj := 0
-			if q != "" && strings.Contains(strings.ToLower(filtered[i].Title), q) {
+			if q != "" && strings.Contains(norm(filtered[i].Title), q) {
 				qi = 1
 			}
-			if q != "" && strings.Contains(strings.ToLower(filtered[j].Title), q) {
+			if q != "" && strings.Contains(norm(filtered[j].Title), q) {
 				qj = 1
 			}
 			if qi != qj {
