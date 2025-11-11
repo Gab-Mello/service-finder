@@ -12,6 +12,7 @@ import (
 
 	"github.com/Gab-Mello/service-finder/internal/auth"
 	transport "github.com/Gab-Mello/service-finder/internal/http"
+	"github.com/Gab-Mello/service-finder/internal/order"
 	"github.com/Gab-Mello/service-finder/internal/posting"
 	"github.com/Gab-Mello/service-finder/internal/user"
 
@@ -29,8 +30,11 @@ func main() {
 	postRepo := posting.NewRepository()
 	postSvc := posting.NewService(postRepo, userSvc, time.Now, nil)
 
+	orderRepo := order.NewRepository()
+	orderSvc := order.NewService(orderRepo, time.Now, nil, nil)
+
 	mux := transport.NewServer()
-	transport.RegisterAll(mux, sessions, userSvc, postSvc)
+	transport.RegisterAll(mux, sessions, userSvc, postSvc, orderSvc)
 
 	log.Printf("listening on %s", addr)
 	log.Fatal(transport.Listen(addr, mux))

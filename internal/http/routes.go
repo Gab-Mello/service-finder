@@ -3,7 +3,9 @@ package http
 import (
 	"net/http"
 
+	orderhttp "github.com/Gab-Mello/service-finder/internal/http/order"
 	userhttp "github.com/Gab-Mello/service-finder/internal/http/user"
+	"github.com/Gab-Mello/service-finder/internal/order"
 	"github.com/Gab-Mello/service-finder/internal/posting"
 
 	"github.com/Gab-Mello/service-finder/internal/auth"
@@ -12,7 +14,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-func RegisterAll(mux *http.ServeMux, sessions *auth.SessionManager, userSvc *user.Service, postingSvc *posting.Service) {
+func RegisterAll(mux *http.ServeMux, sessions *auth.SessionManager, userSvc *user.Service, postingSvc *posting.Service, orderSvc *order.Service) {
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
@@ -22,4 +24,7 @@ func RegisterAll(mux *http.ServeMux, sessions *auth.SessionManager, userSvc *use
 
 	ph := postinghttp.NewHandler(postingSvc)
 	postinghttp.Register(mux, ph, sessions)
+
+	oh := orderhttp.NewHandler(orderSvc)
+	orderhttp.Register(mux, oh, sessions)
 }
