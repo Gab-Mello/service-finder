@@ -22,7 +22,7 @@ import (
 func main() {
 	addr := ":8080"
 
-	sessions := auth.NewSessionManager(5 * time.Minute)
+	sessions := auth.NewSessionManager(2 * time.Hour)
 
 	userRepo := user.NewRepository()
 	userSvc := user.NewService(userRepo, nil, time.Now, nil)
