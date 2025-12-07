@@ -30,7 +30,7 @@ func main() {
 	reviewRepo := review.NewRepository()
 	reviewSvc := review.NewService(reviewRepo, orderRepo, time.Now)
 
-	postSvc := posting.NewService(postRepo, userSvc, time.Now, nil)
+	postSvc := posting.NewService(postRepo, userSvc, time.Now, nil, reviewSvc)
 
 	mux := transport.NewServer()
 	transport.RegisterAll(mux, sessions, userSvc, postSvc, orderSvc, reviewSvc)

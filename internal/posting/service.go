@@ -14,18 +14,25 @@ import (
 type Service struct {
 	repo      Repository
 	providers ports.ProviderDirectory
+	ratings   ports.Ratings
 	now       func() time.Time
 	idgen     func() string
 }
 
-func NewService(r Repository, providers ports.ProviderDirectory, now func() time.Time, idgen func() string) *Service {
+func NewService(r Repository, providers ports.ProviderDirectory, now func() time.Time, idgen func() string, ratings ports.Ratings) *Service {
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	if idgen == nil {
 		idgen = func() string { return uuid.NewString() }
 	}
-	return &Service{repo: r, providers: providers, now: now, idgen: idgen}
+	return &Service{
+		repo:      r,
+		providers: providers,
+		ratings:   ratings,
+		now:       now,
+		idgen:     idgen,
+	}
 }
 
 func (s *Service) Create(providerID, title, desc string, price int64, category, city, district string) (*Posting, error) {
@@ -112,13 +119,25 @@ func (s *Service) GetPublic(id string) (*Posting, error) {
 	if p.Archived {
 		return nil, ErrNotFound
 	}
+	s.enrich(p)
 	return p, nil
 }
 
 func (s *Service) ListMine(providerID string) ([]Posting, error) {
-	return s.repo.ListByProvider(providerID)
+	list, err := s.repo.ListByProvider(providerID)
+	if err == nil {
+		s.enrichMany(list)
+	}
+	return list, err
 }
-func (s *Service) ListPublic() ([]Posting, error) { return s.repo.ListPublic() }
+
+func (s *Service) ListPublic() ([]Posting, error) {
+	list, err := s.repo.ListPublic()
+	if err == nil {
+		s.enrichMany(list)
+	}
+	return list, err
+}
 
 type SearchParams struct {
 	Query                    string
@@ -238,5 +257,28 @@ func (s *Service) Search(p SearchParams) ([]Posting, int) {
 	if end < len(filtered) {
 		next = end
 	}
-	return filtered[offset:end], next
+
+	page := filtered[offset:end]
+	s.enrichMany(page)
+
+	return page, next
+}
+
+func (s *Service) enrich(p *Posting) {
+	if s.ratings == nil || p == nil {
+		return
+	}
+	if avg, _ := s.ratings.AvgForProvider(p.ProviderID); avg > 0 {
+		p.ProviderAvg = avg
+	}
+}
+func (s *Service) enrichMany(list []Posting) {
+	if s.ratings == nil {
+		return
+	}
+	for i := range list {
+		if avg, _ := s.ratings.AvgForProvider(list[i].ProviderID); avg > 0 {
+			list[i].ProviderAvg = avg
+		}
+	}
 }
