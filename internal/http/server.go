@@ -15,7 +15,7 @@ func NewServer() *http.ServeMux {
 func Listen(addr string, handler *http.ServeMux) error {
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           middleware.PermissiveCORSWithoutCreds(withLogging(handler)),
+		Handler:           middleware.CORSWithCreds(withLogging(handler)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return srv.ListenAndServe()
