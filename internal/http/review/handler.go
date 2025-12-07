@@ -14,15 +14,14 @@ func NewHandler(s *domain.Service) *Handler { return &Handler{svc: s} }
 
 type createReq struct {
 	OrderID string `json:"orderId"`
-	Stars   int    `json:"stars"`   // 1..5
-	Comment string `json:"comment"` // opcional
+	Stars   int    `json:"stars"`
+	Comment string `json:"comment"`
 }
 type editReq struct {
 	Stars   int    `json:"stars"`
 	Comment string `json:"comment"`
 }
 
-// POST /reviews
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
@@ -43,7 +42,6 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, rv)
 }
 
-// PATCH /reviews/{orderId}
 func (h *Handler) Edit(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {

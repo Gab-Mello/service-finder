@@ -18,7 +18,7 @@ type Review struct {
 	OrderID    string    `json:"orderId"`
 	ClientID   string    `json:"clientId"`
 	ProviderID string    `json:"providerId"`
-	Stars      int       `json:"stars"` // 1..5
+	Stars      int       `json:"stars"`
 	Comment    string    `json:"comment"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`

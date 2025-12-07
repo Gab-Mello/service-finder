@@ -7,12 +7,11 @@ import (
 	"github.com/Gab-Mello/service-finder/internal/order"
 )
 
-// Dependemos do order.Repository para validar dono/estado
 type Service struct {
 	repo    Repository
 	orders  order.Repository
 	now     func() time.Time
-	editTTL time.Duration // janela de edição
+	editTTL time.Duration
 }
 
 func NewService(r Repository, orders order.Repository, now func() time.Time) *Service {
@@ -27,7 +26,6 @@ func NewService(r Repository, orders order.Repository, now func() time.Time) *Se
 	}
 }
 
-// Create: só cliente do pedido, pedido CONCLUIDO, 1 por order
 func (s *Service) Create(clientID, orderID string, stars int, comment string) (*Review, error) {
 	if stars < 1 || stars > 5 {
 		return nil, ErrInvalidFields
@@ -62,7 +60,6 @@ func (s *Service) Create(clientID, orderID string, stars int, comment string) (*
 	return rv, nil
 }
 
-// Edit: só cliente; até 24h da criação
 func (s *Service) Edit(clientID, orderID string, stars int, comment string) (*Review, error) {
 	rv, err := s.repo.ByOrderID(orderID)
 	if err != nil {
@@ -86,7 +83,6 @@ func (s *Service) Edit(clientID, orderID string, stars int, comment string) (*Re
 	return rv, nil
 }
 
-// Média do prestador (para exibir nos postings)
 func (s *Service) AvgForProvider(providerID string) (avg float64, count int) {
 	list, _ := s.repo.ListByProvider(providerID)
 	if len(list) == 0 {

@@ -1,6 +1,5 @@
 package review
 
-// memória simples (sem locks) para MVP
 type Repository interface {
 	Create(r *Review) error
 	ByOrderID(orderID string) (*Review, error)
@@ -44,10 +43,9 @@ func (r *memoryRepo) Update(rv *Review) error {
 	if !ok {
 		return ErrNotFound
 	}
-	// atualizar entry de byOrder
+
 	*old = *rv
 
-	// atualizar array do provider (substituir a que tem o mesmo OrderID)
 	arr := r.byProvider[rv.ProviderID]
 	for i := range arr {
 		if arr[i].OrderID == rv.OrderID {
