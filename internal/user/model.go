@@ -10,22 +10,22 @@ const (
 )
 
 type User struct {
-	ID           string
-	Name         string
-	Email        string
-	PasswordHash string
-	Role         Role
-	Provider     *ProviderProfile
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Email        string           `json:"email"`
+	PasswordHash string           `json:"-"`
+	Role         Role             `json:"role"`
+	Provider     *ProviderProfile `json:"provider,omitempty"`
+	CreatedAt    time.Time        `json:"createdAt"`
+	UpdatedAt    time.Time        `json:"updatedAt"`
 }
 
 type ProviderProfile struct {
-	Bio       string
-	Phone     string
-	Expertise string
-	City      string
-	District  string
+	Bio       string `json:"bio,omitempty"`
+	Phone     string `json:"phone"`
+	Expertise string `json:"expertise,omitempty"`
+	City      string `json:"city"`
+	District  string `json:"district"`
 }
 
 var (

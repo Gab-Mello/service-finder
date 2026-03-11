@@ -24,7 +24,7 @@ func RegisterAll(mux *http.ServeMux, sessions *auth.SessionManager, userSvc *use
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	uh := userhttp.NewHandler(userSvc, sessions)
-	userhttp.Register(mux, uh)
+	userhttp.Register(mux, uh, sessions)
 
 	ph := postinghttp.NewHandler(postingSvc)
 	postinghttp.Register(mux, ph, sessions)

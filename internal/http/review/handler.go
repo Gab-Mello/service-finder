@@ -5,8 +5,11 @@ import (
 	"net/http"
 
 	authmw "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
+	"github.com/Gab-Mello/service-finder/internal/http/response"
 	domain "github.com/Gab-Mello/service-finder/internal/review"
 )
+
+const basePath = "/api/v1/reviews/"
 
 type Handler struct{ svc *domain.Service }
 
@@ -25,61 +28,53 @@ type editReq struct {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-		writeErr(w, 400, "invalid json")
+		response.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	rv, err := h.svc.Create(uid, req.OrderID, req.Stars, req.Comment)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 201, rv)
+	response.JSON(w, http.StatusCreated, rv)
 }
 
 func (h *Handler) Edit(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	orderID := r.URL.Path[len("/api/v1/reviews/"):]
+	orderID := response.PathParam(r.URL.Path, basePath, "")
 	var req editReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "invalid json")
+		response.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	rv, err := h.svc.Edit(uid, orderID, req.Stars, req.Comment)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, rv)
+	response.JSON(w, http.StatusOK, rv)
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
 func statusFor(err error) int {
 	switch err {
 	case domain.ErrForbidden:
-		return 403
+		return http.StatusForbidden
 	case domain.ErrInvalidFields, domain.ErrAlreadyExists, domain.ErrEditWindowOver, domain.ErrOrderNotDone:
-		return 400
+		return http.StatusBadRequest
 	case domain.ErrNotFound:
-		return 404
+		return http.StatusNotFound
 	default:
-		return 500
+		return http.StatusInternalServerError
 	}
 }

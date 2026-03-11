@@ -3,13 +3,27 @@ package user
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-var ErrValidation = errors.New("validation error")
+var (
+	ErrValidation = errors.New("validation error")
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	phoneRegex    = regexp.MustCompile(`^[\d\s\-\(\)\+]{8,20}$`)
+)
+
+const (
+	minPasswordLen = 8
+	maxNameLen     = 100
+	maxBioLen      = 1000
+	maxPhoneLen    = 20
+	maxCityLen     = 100
+	maxDistrictLen = 100
+)
 
 type PasswordHasher interface {
 	Hash(plain string) (string, error)
@@ -44,14 +58,17 @@ func (s *Service) Register(name, email, password, role string) (*User, error) {
 	if name == "" {
 		return nil, fmt.Errorf("%w: name is required", ErrValidation)
 	}
-	if !strings.Contains(email, "@") {
-		return nil, fmt.Errorf("%w: invalid email", ErrValidation)
+	if len(name) > maxNameLen {
+		return nil, fmt.Errorf("%w: name is too long", ErrValidation)
 	}
-	if len(password) < 8 {
-		return nil, fmt.Errorf("%w: password must be at least 8 characters", ErrValidation)
+	if !emailRegex.MatchString(email) {
+		return nil, fmt.Errorf("%w: invalid email format", ErrValidation)
+	}
+	if len(password) < minPasswordLen {
+		return nil, fmt.Errorf("%w: password must be at least %d characters", ErrValidation, minPasswordLen)
 	}
 	if role != string(RoleProvider) && role != string(RoleCustomer) {
-		return nil, fmt.Errorf("%w: role must be 'provider' or 'customer", ErrValidation)
+		return nil, fmt.Errorf("%w: role must be 'provider' or 'customer'", ErrValidation)
 	}
 
 	if _, err := s.repo.ByEmail(email); err == nil {
@@ -96,12 +113,31 @@ func (s *Service) UpdateProviderProfile(userID string, p ProviderProfile) (*User
 		return nil, ErrUnauthorized
 	}
 
-	if strings.TrimSpace(p.Phone) == "" || strings.TrimSpace(p.City) == "" || strings.TrimSpace(p.District) == "" {
-		return nil, errors.New("phone, city and district are required")
+	phone := strings.TrimSpace(p.Phone)
+	city := strings.TrimSpace(p.City)
+	district := strings.TrimSpace(p.District)
+	bio := strings.TrimSpace(p.Bio)
+	expertise := strings.TrimSpace(p.Expertise)
+
+	if phone == "" || city == "" || district == "" {
+		return nil, fmt.Errorf("%w: phone, city and district are required", ErrValidation)
 	}
+	if !phoneRegex.MatchString(phone) {
+		return nil, fmt.Errorf("%w: invalid phone format", ErrValidation)
+	}
+	if len(bio) > maxBioLen {
+		return nil, fmt.Errorf("%w: bio is too long", ErrValidation)
+	}
+	if len(city) > maxCityLen || len(district) > maxDistrictLen {
+		return nil, fmt.Errorf("%w: city or district is too long", ErrValidation)
+	}
+
 	u.Provider = &ProviderProfile{
-		Bio: strings.TrimSpace(p.Bio), Phone: strings.TrimSpace(p.Phone),
-		Expertise: strings.TrimSpace(p.Expertise), City: strings.TrimSpace(p.City), District: strings.TrimSpace(p.District),
+		Bio:       bio,
+		Phone:     phone,
+		Expertise: expertise,
+		City:      city,
+		District:  district,
 	}
 	u.UpdatedAt = s.now()
 	if err := s.repo.Update(u); err != nil {

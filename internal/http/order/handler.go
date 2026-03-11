@@ -3,12 +3,14 @@ package order
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	authmw "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
+	"github.com/Gab-Mello/service-finder/internal/http/response"
 	domain "github.com/Gab-Mello/service-finder/internal/order"
 )
+
+const basePath = "/api/v1/orders/"
 
 type Handler struct{ svc *domain.Service }
 
@@ -25,135 +27,136 @@ type acceptReq struct {
 func (h *Handler) Request(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	var req requestOrder
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PostingID == "" || req.ProviderID == "" {
-		writeErr(w, 400, "invalid json")
+		response.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	o, err := h.svc.Request(uid, req.PostingID, req.ProviderID)
 	if err != nil {
-		writeErr(w, 400, err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 201, o)
+	response.JSON(w, http.StatusCreated, o)
 }
 
 func (h *Handler) Accept(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/orders/")
-	id = strings.TrimSuffix(id, "/accept")
+	id := response.PathParam(r.URL.Path, basePath, "/accept")
 
 	var req acceptReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ScheduledAt == "" {
-		writeErr(w, 400, "scheduledAt required (RFC3339)")
+		response.Error(w, http.StatusBadRequest, "scheduledAt required (RFC3339)")
 		return
 	}
 	when, err := time.Parse(time.RFC3339, req.ScheduledAt)
 	if err != nil {
-		writeErr(w, 400, "invalid scheduledAt")
+		response.Error(w, http.StatusBadRequest, "invalid scheduledAt")
 		return
 	}
 
 	o, err := h.svc.Accept(uid, id, when)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, o)
+	response.JSON(w, http.StatusOK, o)
 }
 
 func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/orders/"), "/start")
+	id := response.PathParam(r.URL.Path, basePath, "/start")
 
 	o, err := h.svc.Start(uid, id)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, o)
+	response.JSON(w, http.StatusOK, o)
 }
 
 func (h *Handler) Complete(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/orders/"), "/complete")
+	id := response.PathParam(r.URL.Path, basePath, "/complete")
 
 	o, err := h.svc.Complete(uid, id)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, o)
+	response.JSON(w, http.StatusOK, o)
 }
 
 func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/orders/"), "/cancel")
+	id := response.PathParam(r.URL.Path, basePath, "/cancel")
 
 	o, err := h.svc.Cancel(uid, id)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, o)
+	response.JSON(w, http.StatusOK, o)
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/orders/")
-	o, err := h.svc.Get(id)
-	if err != nil {
-		writeErr(w, 404, "not found")
+	uid, ok := authmw.UserIDFromContext(r)
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	writeJSON(w, 200, o)
+	id := response.PathParam(r.URL.Path, basePath, "")
+
+	o, err := h.svc.GetForUser(uid, id)
+	if err != nil {
+		response.Error(w, statusFor(err), err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, o)
 }
 
 func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
 	uid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, 401, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	list, _ := h.svc.ListMine(uid)
-	writeJSON(w, 200, list)
+	list, err := h.svc.ListMine(uid)
+	if err != nil {
+		response.InternalError(w, err)
+		return
+	}
+	response.JSON(w, http.StatusOK, list)
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
 func statusFor(err error) int {
 	switch err {
 	case domain.ErrForbidden:
-		return 403
+		return http.StatusForbidden
 	case domain.ErrInvalidState, domain.ErrInvalidFields:
-		return 400
+		return http.StatusBadRequest
 	case domain.ErrNotFound:
-		return 404
+		return http.StatusNotFound
 	default:
-		return 500
+		return http.StatusInternalServerError
 	}
 }

@@ -38,6 +38,10 @@ func (s *Service) Request(clientID, postingID, providerID string) (*Order, error
 	if clientID == "" || postingID == "" || providerID == "" {
 		return nil, ErrInvalidFields
 	}
+	if clientID == providerID {
+		return nil, ErrInvalidFields
+	}
+
 	now := s.now()
 	o := &Order{
 		ID:         s.idgen(),
@@ -66,6 +70,9 @@ func (s *Service) Accept(providerID, orderID string, scheduled time.Time) (*Orde
 	}
 	if o.Status != StatusPending {
 		return nil, ErrInvalidState
+	}
+	if scheduled.Before(s.now()) {
+		return nil, ErrInvalidFields
 	}
 	o.ScheduledAt = &scheduled
 	s.transition(o, providerID, StatusAccepted, "aceito com data/horário")
@@ -118,6 +125,17 @@ func (s *Service) Cancel(actorID, orderID string) (*Order, error) {
 }
 
 func (s *Service) Get(id string) (*Order, error) { return s.repo.ByID(id) }
+
+func (s *Service) GetForUser(userID, orderID string) (*Order, error) {
+	o, err := s.repo.ByID(orderID)
+	if err != nil {
+		return nil, err
+	}
+	if o.ClientID != userID && o.ProviderID != userID {
+		return nil, ErrForbidden
+	}
+	return o, nil
+}
 
 func (s *Service) ListMine(userID string) ([]Order, error) {
 	return s.repo.ListMine(userID)

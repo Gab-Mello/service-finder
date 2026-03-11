@@ -1,5 +1,7 @@
 package order
 
+import "sync"
+
 type Repository interface {
 	Create(o *Order) error
 	ByID(id string) (*Order, error)
@@ -8,20 +10,36 @@ type Repository interface {
 }
 
 type memoryRepo struct {
-	byID map[string]*Order
+	mu     sync.RWMutex
+	byID   map[string]*Order
+	byUser map[string][]string // userID -> []orderID index (for both client and provider)
 }
 
 func NewRepository() Repository {
-	return &memoryRepo{byID: map[string]*Order{}}
+	return &memoryRepo{
+		byID:   make(map[string]*Order),
+		byUser: make(map[string][]string),
+	}
 }
 
 func (r *memoryRepo) Create(o *Order) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	c := *o
 	r.byID[o.ID] = &c
+
+	r.byUser[o.ClientID] = append(r.byUser[o.ClientID], o.ID)
+	if o.ProviderID != o.ClientID {
+		r.byUser[o.ProviderID] = append(r.byUser[o.ProviderID], o.ID)
+	}
 	return nil
 }
 
 func (r *memoryRepo) ByID(id string) (*Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	o, ok := r.byID[id]
 	if !ok {
 		return nil, ErrNotFound
@@ -31,6 +49,9 @@ func (r *memoryRepo) ByID(id string) (*Order, error) {
 }
 
 func (r *memoryRepo) Update(o *Order) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if _, ok := r.byID[o.ID]; !ok {
 		return ErrNotFound
 	}
@@ -40,9 +61,13 @@ func (r *memoryRepo) Update(o *Order) error {
 }
 
 func (r *memoryRepo) ListMine(userID string) ([]Order, error) {
-	out := []Order{}
-	for _, o := range r.byID {
-		if o.ClientID == userID || o.ProviderID == userID {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	ids := r.byUser[userID]
+	out := make([]Order, 0, len(ids))
+	for _, id := range ids {
+		if o, ok := r.byID[id]; ok {
 			out = append(out, *o)
 		}
 	}

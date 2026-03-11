@@ -1,5 +1,7 @@
 package review
 
+import "sync"
+
 type Repository interface {
 	Create(r *Review) error
 	ByOrderID(orderID string) (*Review, error)
@@ -8,18 +10,22 @@ type Repository interface {
 }
 
 type memoryRepo struct {
+	mu         sync.RWMutex
 	byOrder    map[string]*Review
 	byProvider map[string][]*Review
 }
 
 func NewRepository() Repository {
 	return &memoryRepo{
-		byOrder:    map[string]*Review{},
-		byProvider: map[string][]*Review{},
+		byOrder:    make(map[string]*Review),
+		byProvider: make(map[string][]*Review),
 	}
 }
 
 func (r *memoryRepo) Create(rv *Review) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if _, ok := r.byOrder[rv.OrderID]; ok {
 		return ErrAlreadyExists
 	}
@@ -30,6 +36,9 @@ func (r *memoryRepo) Create(rv *Review) error {
 }
 
 func (r *memoryRepo) ByOrderID(orderID string) (*Review, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	v, ok := r.byOrder[orderID]
 	if !ok {
 		return nil, ErrNotFound
@@ -39,6 +48,9 @@ func (r *memoryRepo) ByOrderID(orderID string) (*Review, error) {
 }
 
 func (r *memoryRepo) Update(rv *Review) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	old, ok := r.byOrder[rv.OrderID]
 	if !ok {
 		return ErrNotFound
@@ -57,6 +69,9 @@ func (r *memoryRepo) Update(rv *Review) error {
 }
 
 func (r *memoryRepo) ListByProvider(providerID string) ([]Review, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	arr := r.byProvider[providerID]
 	out := make([]Review, 0, len(arr))
 	for _, p := range arr {

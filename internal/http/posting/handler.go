@@ -4,120 +4,98 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	authmw "github.com/Gab-Mello/service-finder/internal/http/middleware/auth"
+	"github.com/Gab-Mello/service-finder/internal/http/response"
 	domain "github.com/Gab-Mello/service-finder/internal/posting"
 )
+
+const basePath = "/api/v1/postings/"
 
 type Handler struct{ svc *domain.Service }
 
 func NewHandler(s *domain.Service) *Handler { return &Handler{svc: s} }
 
-// Create
-// @Summary  Criar anúncio (posting)
-// @Tags     postings
-// @Router   /postings [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	var req CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "invalid json")
+		response.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
 	p, err := h.svc.Create(pid, req.Title, req.Description, req.Price, req.Category, req.City, req.District)
 	if err != nil {
-		writeErr(w, 400, err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 201, p)
+	response.JSON(w, http.StatusCreated, p)
 }
 
-// Update
-// @Summary  Atualizar anúncio
-// @Tags     postings
-// @Param    id      path   string  true  "Posting ID"
-// @Router   /postings/{id} [patch]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
+	id := response.PathParam(r.URL.Path, basePath, "")
 	var patch map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-		writeErr(w, 400, "invalid json")
+		response.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	p, err := h.svc.Update(pid, id, patch)
 	if err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, p)
+	response.JSON(w, http.StatusOK, p)
 }
 
-// Archive
-// @Summary  Arquivar anúncio
-// @Tags     postings
-// @Param    id      path   string  true  "Posting ID"
-// @Router   /postings/{id}/archive [post]
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
-	id = strings.TrimSuffix(id, "/archive")
+	id := response.PathParam(r.URL.Path, basePath, "/archive")
 
 	if err := h.svc.Archive(pid, id); err != nil {
-		writeErr(w, statusFor(err), err.Error())
+		response.Error(w, statusFor(err), err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]string{"status": "ok"})
+	response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// ListMine
-// @Summary  Listar meus anúncios
-// @Tags     postings
-// @Router   /postings/mine [get]
 func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
 	pid, ok := authmw.UserIDFromContext(r)
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		response.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	list, _ := h.svc.ListMine(pid)
-	writeJSON(w, 200, list)
+	list, err := h.svc.ListMine(pid)
+	if err != nil {
+		response.InternalError(w, err)
+		return
+	}
+	response.JSON(w, http.StatusOK, list)
 }
 
-// GetPublic
-// @Summary  Detalhar anúncio público
-// @Tags     postings
-// @Param    id  path  string  true  "Posting ID"
-// @Router   /postings/{id} [get]
 func (h *Handler) GetPublic(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/postings/")
+	id := response.PathParam(r.URL.Path, basePath, "")
 	p, err := h.svc.GetPublic(id)
 	if err != nil {
-		writeErr(w, 404, "not found")
+		response.Error(w, http.StatusNotFound, "not found")
 		return
 	}
-	writeJSON(w, 200, p)
+	response.JSON(w, http.StatusOK, p)
 }
 
-// Search
-// @Summary  Buscar/Listar anúncios com filtros
-// @Tags     postings
-// @Router   /postings [get]
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := domain.SearchParams{
@@ -145,31 +123,45 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	items, next := h.svc.Search(p)
-	writeJSON(w, 200, map[string]any{
+	response.JSON(w, http.StatusOK, map[string]any{
 		"items":       items,
 		"next_offset": next,
 	})
 }
 
-func parseI(s string) int       { i, _ := strconv.Atoi(s); return i }
-func parseI64(s string) int64   { i, _ := strconv.ParseInt(s, 10, 64); return i }
-func parseF64(s string) float64 { f, _ := strconv.ParseFloat(s, 64); return f }
+func parseI(s string) int {
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return i
+}
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+func parseI64(s string) int64 {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return i
 }
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+
+func parseF64(s string) float64 {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return f
 }
+
 func statusFor(err error) int {
 	switch err {
 	case domain.ErrForbidden:
-		return 403
+		return http.StatusForbidden
 	case domain.ErrNotFound:
-		return 404
+		return http.StatusNotFound
+	case domain.ErrInvalidFields:
+		return http.StatusBadRequest
 	default:
-		return 400
+		return http.StatusInternalServerError
 	}
 }

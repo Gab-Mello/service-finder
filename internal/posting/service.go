@@ -1,7 +1,7 @@
 package posting
 
 import (
-	"errors"
+	"log"
 	"net/url"
 	"sort"
 	"strings"
@@ -9,6 +9,14 @@ import (
 
 	"github.com/Gab-Mello/service-finder/internal/ports"
 	"github.com/google/uuid"
+)
+
+const (
+	maxTitleLen       = 200
+	maxDescriptionLen = 5000
+	maxCategoryLen    = 100
+	maxCityLen        = 100
+	maxDistrictLen    = 100
 )
 
 type Service struct {
@@ -36,23 +44,41 @@ func NewService(r Repository, providers ports.ProviderDirectory, now func() time
 }
 
 func (s *Service) Create(providerID, title, desc string, price int64, category, city, district string) (*Posting, error) {
-	if strings.TrimSpace(title) == "" || strings.TrimSpace(desc) == "" || price <= 0 ||
-		strings.TrimSpace(category) == "" || strings.TrimSpace(city) == "" || strings.TrimSpace(district) == "" {
+	title = strings.TrimSpace(title)
+	desc = strings.TrimSpace(desc)
+	category = strings.TrimSpace(category)
+	city = strings.TrimSpace(city)
+	district = strings.TrimSpace(district)
+
+	if title == "" || desc == "" || category == "" || city == "" || district == "" {
+		return nil, ErrInvalidFields
+	}
+	if price <= 0 {
+		return nil, ErrInvalidFields
+	}
+	if len(title) > maxTitleLen || len(desc) > maxDescriptionLen ||
+		len(category) > maxCategoryLen || len(city) > maxCityLen || len(district) > maxDistrictLen {
 		return nil, ErrInvalidFields
 	}
 
 	providerName, err := s.providers.GetNameByID(providerID)
 	if err != nil {
+		log.Printf("failed to get provider name for ID %s: %v", providerID, err)
 		return nil, ErrInvalidFields
 	}
 
 	p := &Posting{
-		ID: s.idgen(), ProviderID: providerID, ProviderName: providerName,
-		Title: strings.TrimSpace(title), Description: strings.TrimSpace(desc),
-		Price:    price,
-		Category: strings.TrimSpace(category),
-		City:     strings.TrimSpace(city), District: strings.TrimSpace(district),
-		CreatedAt: s.now(), UpdatedAt: s.now(),
+		ID:           s.idgen(),
+		ProviderID:   providerID,
+		ProviderName: providerName,
+		Title:        title,
+		Description:  desc,
+		Price:        price,
+		Category:     category,
+		City:         city,
+		District:     district,
+		CreatedAt:    s.now(),
+		UpdatedAt:    s.now(),
 	}
 	if err := s.repo.Create(p); err != nil {
 		return nil, err
@@ -70,23 +96,43 @@ func (s *Service) Update(providerID, id string, patch map[string]any) (*Posting,
 	}
 
 	if v, ok := patch["title"].(string); ok {
-		p.Title = strings.TrimSpace(v)
+		v = strings.TrimSpace(v)
+		if v == "" || len(v) > maxTitleLen {
+			return nil, ErrInvalidFields
+		}
+		p.Title = v
 	}
 	if v, ok := patch["description"].(string); ok {
-		p.Description = strings.TrimSpace(v)
+		v = strings.TrimSpace(v)
+		if v == "" || len(v) > maxDescriptionLen {
+			return nil, ErrInvalidFields
+		}
+		p.Description = v
 	}
 	if v, ok := patch["category"].(string); ok {
-		p.Category = strings.TrimSpace(v)
+		v = strings.TrimSpace(v)
+		if v == "" || len(v) > maxCategoryLen {
+			return nil, ErrInvalidFields
+		}
+		p.Category = v
 	}
 	if v, ok := patch["city"].(string); ok {
-		p.City = strings.TrimSpace(v)
+		v = strings.TrimSpace(v)
+		if v == "" || len(v) > maxCityLen {
+			return nil, ErrInvalidFields
+		}
+		p.City = v
 	}
 	if v, ok := patch["district"].(string); ok {
-		p.District = strings.TrimSpace(v)
+		v = strings.TrimSpace(v)
+		if v == "" || len(v) > maxDistrictLen {
+			return nil, ErrInvalidFields
+		}
+		p.District = v
 	}
 	if v, ok := patch["price"].(float64); ok {
 		if v <= 0 {
-			return nil, errors.New("price must be > 0")
+			return nil, ErrInvalidFields
 		}
 		p.Price = int64(v)
 	}
@@ -125,18 +171,22 @@ func (s *Service) GetPublic(id string) (*Posting, error) {
 
 func (s *Service) ListMine(providerID string) ([]Posting, error) {
 	list, err := s.repo.ListByProvider(providerID)
-	if err == nil {
-		s.enrichMany(list)
+	if err != nil {
+		log.Printf("failed to list postings for provider %s: %v", providerID, err)
+		return nil, err
 	}
-	return list, err
+	s.enrichMany(list)
+	return list, nil
 }
 
 func (s *Service) ListPublic() ([]Posting, error) {
 	list, err := s.repo.ListPublic()
-	if err == nil {
-		s.enrichMany(list)
+	if err != nil {
+		log.Printf("failed to list public postings: %v", err)
+		return nil, err
 	}
-	return list, err
+	s.enrichMany(list)
+	return list, nil
 }
 
 type SearchParams struct {
@@ -152,7 +202,11 @@ type SearchParams struct {
 }
 
 func (s *Service) Search(p SearchParams) ([]Posting, int) {
-	all, _ := s.repo.ListPublic()
+	all, err := s.repo.ListPublic()
+	if err != nil {
+		log.Printf("failed to list public postings for search: %v", err)
+		return []Posting{}, -1
+	}
 
 	if u, err := url.QueryUnescape(p.Query); err == nil {
 		p.Query = u
@@ -272,12 +326,20 @@ func (s *Service) enrich(p *Posting) {
 		p.ProviderAvg = avg
 	}
 }
+
 func (s *Service) enrichMany(list []Posting) {
 	if s.ratings == nil {
 		return
 	}
+	avgCache := make(map[string]float64)
 	for i := range list {
-		if avg, _ := s.ratings.AvgForProvider(list[i].ProviderID); avg > 0 {
+		pid := list[i].ProviderID
+		avg, cached := avgCache[pid]
+		if !cached {
+			avg, _ = s.ratings.AvgForProvider(pid)
+			avgCache[pid] = avg
+		}
+		if avg > 0 {
 			list[i].ProviderAvg = avg
 		}
 	}

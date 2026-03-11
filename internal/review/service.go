@@ -1,11 +1,14 @@
 package review
 
 import (
+	"log"
 	"strings"
 	"time"
 
 	"github.com/Gab-Mello/service-finder/internal/order"
 )
+
+const maxCommentLen = 2000
 
 type Service struct {
 	repo    Repository
@@ -30,6 +33,11 @@ func (s *Service) Create(clientID, orderID string, stars int, comment string) (*
 	if stars < 1 || stars > 5 {
 		return nil, ErrInvalidFields
 	}
+	comment = strings.TrimSpace(comment)
+	if len(comment) > maxCommentLen {
+		return nil, ErrInvalidFields
+	}
+
 	ord, err := s.orders.ByID(orderID)
 	if err != nil {
 		return nil, err
@@ -40,8 +48,14 @@ func (s *Service) Create(clientID, orderID string, stars int, comment string) (*
 	if ord.ClientID != clientID {
 		return nil, ErrForbidden
 	}
-	if _, err := s.repo.ByOrderID(orderID); err == nil {
+
+	_, err = s.repo.ByOrderID(orderID)
+	if err == nil {
 		return nil, ErrAlreadyExists
+	}
+	if err != ErrNotFound {
+		log.Printf("error checking existing review for order %s: %v", orderID, err)
+		return nil, err
 	}
 
 	now := s.now()
@@ -50,7 +64,7 @@ func (s *Service) Create(clientID, orderID string, stars int, comment string) (*
 		ClientID:   clientID,
 		ProviderID: ord.ProviderID,
 		Stars:      stars,
-		Comment:    strings.TrimSpace(comment),
+		Comment:    comment,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -74,8 +88,13 @@ func (s *Service) Edit(clientID, orderID string, stars int, comment string) (*Re
 	if stars < 1 || stars > 5 {
 		return nil, ErrInvalidFields
 	}
+	comment = strings.TrimSpace(comment)
+	if len(comment) > maxCommentLen {
+		return nil, ErrInvalidFields
+	}
+
 	rv.Stars = stars
-	rv.Comment = strings.TrimSpace(comment)
+	rv.Comment = comment
 	rv.UpdatedAt = s.now()
 	if err := s.repo.Update(rv); err != nil {
 		return nil, err
@@ -83,8 +102,16 @@ func (s *Service) Edit(clientID, orderID string, stars int, comment string) (*Re
 	return rv, nil
 }
 
+func (s *Service) ByOrderID(orderID string) (*Review, error) {
+	return s.repo.ByOrderID(orderID)
+}
+
 func (s *Service) AvgForProvider(providerID string) (avg float64, count int) {
-	list, _ := s.repo.ListByProvider(providerID)
+	list, err := s.repo.ListByProvider(providerID)
+	if err != nil {
+		log.Printf("error listing reviews for provider %s: %v", providerID, err)
+		return 0, 0
+	}
 	if len(list) == 0 {
 		return 0, 0
 	}
