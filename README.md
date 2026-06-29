@@ -1,14 +1,14 @@
 # Service Finder
 
-A Go backend API for a marketplace that connects service providers with customers.
+A Go backend API for a service marketplace that connects customers with independent providers.
 
-> Implemented as a college project. Scope reflects that: data is held in memory (resets on restart), and the code prioritizes clarity over production hardening.
+> Implemented as a college project. The scope reflects that: data and sessions are stored in memory, reset on restart, and the code prioritizes clarity and backend structure over production hardening.
 
 ## Features
 
 - User registration and session-based authentication for two roles: **providers** and **customers**
 - Service postings with search by city, district, and category
-- Order/booking lifecycle: `pending → accepted → in progress → completed` (with `cancelled` as a terminal state)
+- Order/booking lifecycle: `PENDENTE → ACEITO → EM_ANDAMENTO → CONCLUIDO` (with `CANCELADO` as a terminal state)
 - Reviews and ratings left by customers after a completed order
 - Provider profiles with expertise, location, contact, and bio
 
@@ -19,7 +19,7 @@ A Go backend API for a marketplace that connects service providers with customer
 - **API docs:** Swagger / OpenAPI 2.0 via [`swaggo/swag`](https://github.com/swaggo/swag) + [`swaggo/http-swagger`](https://github.com/swaggo/http-swagger)
 - **IDs:** [`google/uuid`](https://github.com/google/uuid)
 - **Storage:** in-memory repositories (no database)
-- **Architecture:** clean architecture — domain packages under `internal/{user,posting,order,review}`, HTTP handlers under `internal/http`
+- **Architecture:** clean architecture-inspired structure with domain packages under `internal/{user,posting,order,review}`, HTTP handlers under `internal/http`, and domain interfaces under `internal/ports`
 
 ## Project Structure
 
